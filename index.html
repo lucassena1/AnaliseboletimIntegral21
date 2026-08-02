@@ -370,6 +370,13 @@
       padding: 6px 8px;
     }
 
+
+
+    .situacaoNota { line-height: 1.25; }
+    .situacaoNota > strong { display:block; margin-bottom:6px; color:#991b1b; }
+    .situacaoNota.cadastradasMenor > strong { color:#166534; }
+    .semCadastroResumo { margin-top:8px; padding:7px 8px; border-radius:8px; background:#fee2e2; color:#991b1b; font-weight:bold; font-size:12px; }
+
     @media print {
       body {
         background: #fff
@@ -729,8 +736,10 @@
         const totalDisciplinas = a.rows.length;
         const disciplinasSemNm3 = a.rows.filter(r => r.disciplina && r.nm1T2 === null).map(r => r.disciplina);
         const disciplinasSemMt = a.rows.filter(r => r.disciplina && r.nm2T2 === null).map(r => r.disciplina);
-        const mtLancadas = a.rows.filter(r => r.disciplina && r.nm2T2 !== null).length;
-        const nm3Lancadas = a.rows.filter(r => r.disciplina && r.nm1T2 !== null).length;
+        const disciplinasComNm1T2 = a.rows.filter(r => r.disciplina && r.nm1T2 !== null).map(r => r.disciplina);
+        const disciplinasComNm2T2 = a.rows.filter(r => r.disciplina && r.nm2T2 !== null).map(r => r.disciplina);
+        const mtLancadas = disciplinasComNm2T2.length;
+        const nm3Lancadas = disciplinasComNm1T2.length;
         const totalNotasFaltandoT2 = disciplinasSemNm3.length + disciplinasSemMt.length;
         const muitasNotasFaltando = totalNotasFaltandoT2 >= 5;
         const notasValidas = a.rows
@@ -760,7 +769,7 @@
         if (disciplinasSemMt.length) obs.push(`Possui ${disciplinasSemMt.length} disciplina(s) sem NM2 do 2º trimestre.`);
         if (!obs.length) obs.push('Sem risco pelos critérios informados.');
         if (muitasNotasFaltando) obs.unshift(`PRIORIDADE: ${totalNotasFaltandoT2} notas do 2º trimestre ainda não foram preenchidas.`);
-        return { ...a, totalDisciplinas, nm3Lancadas, disciplinasSemNm3, mtLancadas, disciplinasSemMt, totalNotasFaltandoT2, muitasNotasFaltando, mediaGeral, notasValidas: notasValidas.length, alunoSemDadosRelatorio, emRisco, totalFaltas, faltasAltas, situacao, obs: obs.join(' ') };
+        return { ...a, totalDisciplinas, nm3Lancadas, disciplinasSemNm3, disciplinasComNm1T2, mtLancadas, disciplinasSemMt, disciplinasComNm2T2, totalNotasFaltandoT2, muitasNotasFaltando, mediaGeral, notasValidas: notasValidas.length, alunoSemDadosRelatorio, emRisco, totalFaltas, faltasAltas, situacao, obs: obs.join(' ') };
       });
     }
 
@@ -884,6 +893,30 @@
       return `<div class="listaDisciplinasCompacta">${visiveis.join('<br>')}${restantes > 0 ? `<span class="maisDisciplinas">+ ${restantes} disciplina(s)</span>` : ''}</div>`;
     }
 
+    function resumoSituacaoNota(d, tipo) {
+      const ehNm1 = tipo === 'NM1';
+      const cadastradas = ehNm1 ? (d.disciplinasComNm1T2 || []) : (d.disciplinasComNm2T2 || []);
+      const naoCadastradas = ehNm1 ? (d.disciplinasSemNm3 || []) : (d.disciplinasSemMt || []);
+
+      if (cadastradas.length < naoCadastradas.length) {
+        const lista = cadastradas.length
+          ? resumoDisciplinas(cadastradas)
+          : '<span class="badge risco">Nenhuma disciplina cadastrada</span>';
+        return `<div class="situacaoNota cadastradasMenor">
+          <strong>${cadastradas.length} disciplina(s) com ${tipo} cadastrada</strong>
+          ${lista}
+          <div class="semCadastroResumo">As demais ${naoCadastradas.length} disciplina(s) não têm cadastro de ${tipo}.</div>
+        </div>`;
+      }
+
+      if (!naoCadastradas.length) return `<span class="badge ok">${tipo} completa</span>`;
+
+      return `<div class="situacaoNota">
+        <strong>${naoCadastradas.length} disciplina(s) sem cadastro de ${tipo}</strong>
+        ${resumoDisciplinas(naoCadastradas)}
+      </div>`;
+    }
+
     function render(dados) {
       dadosGerados = dados;
       const turma = dados.find(d => d.turma && d.turma !== 'Turma não identificada')?.turma || 'Turma não identificada';
@@ -906,14 +939,14 @@
         pendenciasNotas.sort((a, b) => (b.totalNotasFaltandoT2 - a.totalNotasFaltandoT2) || a.aluno.localeCompare(b.aluno));
         const prioritarios = pendenciasNotas.filter(d => d.muitasNotasFaltando).length;
         listaNm3.innerHTML = `<p><strong>${pendenciasNotas.length} aluno(s) com pendência</strong> · <span class="badge risco">${prioritarios} com muitas notas faltando</span></p>` +
-          `<table><thead><tr><th class="colAlunoPendencia">Aluno</th><th>Total pendente</th><th>NM1 preenchida</th><th>NM2 preenchida</th><th>Disciplinas sem NM1</th><th>Disciplinas sem NM2</th></tr></thead><tbody>` +
+          `<table><thead><tr><th class="colAlunoPendencia">Aluno</th><th>Total pendente</th><th>NM1 preenchida</th><th>NM2 preenchida</th><th>Situação da NM1</th><th>Situação da NM2</th></tr></thead><tbody>` +
           pendenciasNotas.map(d => `<tr class="${d.muitasNotasFaltando ? 'prioridadeNotas' : ''}">
             <td><strong>${d.aluno}</strong>${d.muitasNotasFaltando ? '<div><span class="badge risco">PRIORIDADE</span></div>' : ''}</td>
             <td><strong>${d.totalNotasFaltandoT2}</strong></td>
             <td><span class="badge ${d.disciplinasSemNm3.length ? 'atencao' : 'ok'}">${d.nm3Lancadas}/${d.totalDisciplinas}</span></td>
             <td><span class="badge ${d.disciplinasSemMt.length ? 'atencao' : 'ok'}">${d.mtLancadas}/${d.totalDisciplinas}</span></td>
-            <td class="pendenciaCell">${resumoDisciplinas(d.disciplinasSemNm3)}</td>
-            <td class="pendenciaCell">${resumoDisciplinas(d.disciplinasSemMt)}</td>
+            <td class="pendenciaCell">${resumoSituacaoNota(d, 'NM1')}</td>
+            <td class="pendenciaCell">${resumoSituacaoNota(d, 'NM2')}</td>
           </tr>`).join('') +
           `</tbody></table>`;
       } else {
@@ -1142,7 +1175,7 @@
           startY: y,
           margin: { top: topoConteudo, left: margem, right: margem, bottom: margemRodape },
           theme: 'grid',
-          head: [['Aluno', 'Total pendente', 'NM1 preenchida', 'NM2 preenchida', 'Disciplinas sem NM1', 'Disciplinas sem NM2']],
+          head: [['Aluno', 'Total pendente', 'NM1 preenchida', 'NM2 preenchida', 'Situação da NM1', 'Situação da NM2']],
           body: pendenciasNotasPdf
             .sort((a, b) => (b.totalNotasFaltandoT2 - a.totalNotasFaltandoT2) || a.aluno.localeCompare(b.aluno))
             .map(d => [
@@ -1150,8 +1183,12 @@
               String(d.totalNotasFaltandoT2),
               `${d.nm3Lancadas}/${d.totalDisciplinas}`,
               `${d.mtLancadas}/${d.totalDisciplinas}`,
-              d.disciplinasSemNm3.length ? d.disciplinasSemNm3.join('; ') : 'Sem pendência',
-              d.disciplinasSemMt.length ? d.disciplinasSemMt.join('; ') : 'Sem pendência'
+              (d.disciplinasComNm1T2 || []).length < d.disciplinasSemNm3.length
+                ? `${(d.disciplinasComNm1T2 || []).length} cadastrada(s): ${(d.disciplinasComNm1T2 || []).join('; ') || 'nenhuma'}. As demais ${d.disciplinasSemNm3.length} não têm cadastro de NM1.`
+                : (d.disciplinasSemNm3.length ? `${d.disciplinasSemNm3.length} sem cadastro: ${d.disciplinasSemNm3.join('; ')}` : 'NM1 completa'),
+              (d.disciplinasComNm2T2 || []).length < d.disciplinasSemMt.length
+                ? `${(d.disciplinasComNm2T2 || []).length} cadastrada(s): ${(d.disciplinasComNm2T2 || []).join('; ') || 'nenhuma'}. As demais ${d.disciplinasSemMt.length} não têm cadastro de NM2.`
+                : (d.disciplinasSemMt.length ? `${d.disciplinasSemMt.length} sem cadastro: ${d.disciplinasSemMt.join('; ')}` : 'NM2 completa')
             ]),
           styles: { fontSize: 7.5, cellPadding: 2, overflow: 'linebreak', valign: 'top' },
           headStyles: { fillColor: [146, 64, 14], textColor: 255, fontStyle: 'bold' },
