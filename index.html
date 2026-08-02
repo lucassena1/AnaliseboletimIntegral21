@@ -126,26 +126,47 @@
 
     .grid {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 14px
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px
+    }
+
+    .resumoGrid {
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 10px
     }
 
     .metric {
       border: 1px solid var(--line);
-      border-radius: 14px;
-      padding: 16px;
-      background: #fbfdff
+      border-radius: 12px;
+      padding: 13px 14px;
+      background: #fbfdff;
+      min-width: 0
+    }
+
+    .resumoGrid .metric {
+      min-height: 92px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 12px
     }
 
     .metric span {
       color: var(--muted);
-      font-weight: bold
+      font-weight: bold;
+      line-height: 1.2;
+      font-size: 13px
     }
 
     .metric b {
-      font-size: 30px;
+      font-size: 28px;
       display: block;
-      margin-top: 6px
+      margin-top: 5px;
+      line-height: 1
+    }
+
+    .resumoGrid .metric b {
+      font-size: 26px
     }
 
     table {
@@ -253,8 +274,40 @@
       border: 1px solid #fed7aa;
       background: #fff7ed;
       border-radius: 12px;
-      padding: 12px;
-      margin-top: 12px
+      padding: 10px;
+      margin-top: 12px;
+      overflow-x: auto
+    }
+
+    #listaNm3Faltando table {
+      min-width: 900px;
+      table-layout: fixed
+    }
+
+    #listaNm3Faltando th,
+    #listaNm3Faltando td {
+      padding: 8px;
+      font-size: 12px;
+      overflow-wrap: anywhere
+    }
+
+    #listaNm3Faltando th:nth-child(1) { width: 25%; }
+    #listaNm3Faltando th:nth-child(2) { width: 8%; }
+    #listaNm3Faltando th:nth-child(3),
+    #listaNm3Faltando th:nth-child(4) { width: 9%; }
+    #listaNm3Faltando th:nth-child(5),
+    #listaNm3Faltando th:nth-child(6) { width: 24.5%; }
+
+    .listaDisciplinasCompacta {
+      line-height: 1.3;
+      white-space: normal
+    }
+
+    .maisDisciplinas {
+      display: block;
+      margin-top: 5px;
+      color: #b91c1c;
+      font-weight: bold
     }
 
     .faltandoBox ul {
@@ -355,18 +408,20 @@
       }
     }
 
+    @media(max-width:1100px) {
+      .resumoGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+
     @media(max-width:850px) {
-      .grid {
-        grid-template-columns: 1fr
-      }
+      .grid { grid-template-columns: 1fr; }
+      .resumoGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      table { font-size: 13px; }
+      .card { padding: 14px; }
+    }
 
-      table {
-        font-size: 13px
-      }
-
-      .card {
-        padding: 14px
-      }
+    @media(max-width:520px) {
+      .resumoGrid { grid-template-columns: 1fr; }
+      .resumoGrid .metric { min-height: 74px; }
     }
 
     .calendarGrid {
@@ -503,23 +558,23 @@
           <div id="turmaTitulo" class="turmaTitulo">TURMA:</div>
         </section>
 
-        <section class="card alertaNm3 destaque" id="relatorioNm3Faltando">
-          <div class="sectionTag">ANÁLISE PRINCIPAL</div>
-          <h2>Ausência de NM1 e NM2 do 2º trimestre</h2>
-          <p>Lista consolidada dos alunos com uma ou mais disciplinas sem NM1 ou NM2 no 2º trimestre. Os alunos com 5 ou mais notas pendentes recebem destaque de prioridade.</p>
-          <div id="listaNm3Faltando" class="faltandoBox"></div>
-        </section>
-
-        <section class="card">
+        <section class="card" id="resumoGeralTurma">
           <h2>Resumo geral da turma</h2>
-          <div class="grid">
+          <div class="grid resumoGrid">
             <div class="metric"><span>Total de alunos</span><b id="totalAlunos">0</b></div>
             <div class="metric"><span>Alunos em risco</span><b id="totalRisco">0</b></div>
             <div class="metric"><span>NM1 do 2º tri. completa</span><b id="totalNm3">0</b></div>
             <div class="metric"><span>NM1 do 2º tri. faltando</span><b id="totalNm3Faltando">0</b></div>
             <div class="metric"><span>NM2 do 2º tri. faltando</span><b id="totalMtFaltando">0</b></div>
-            <div class="metric"><span>Alunos com componente acima do limite</span><b id="totalFaltas">0</b></div>
+            <div class="metric"><span>Acima do limite de faltas</span><b id="totalFaltas">0</b></div>
           </div>
+        </section>
+
+        <section class="card alertaNm3 destaque" id="relatorioNm3Faltando">
+          <div class="sectionTag">ANÁLISE PRINCIPAL</div>
+          <h2>Ausência de NM1 e NM2 do 2º trimestre</h2>
+          <p>Lista consolidada dos alunos com uma ou mais disciplinas sem NM1 ou NM2 no 2º trimestre. Os alunos com 5 ou mais notas pendentes recebem destaque de prioridade.</p>
+          <div id="listaNm3Faltando" class="faltandoBox"></div>
         </section>
 
         <section class="card alertaNm3 destaque" id="rankingTurma">
@@ -822,6 +877,13 @@
       return html;
     }
 
+    function resumoDisciplinas(lista, limite = 8) {
+      if (!lista || !lista.length) return '<span class="badge ok">Sem pendência</span>';
+      const visiveis = lista.slice(0, limite);
+      const restantes = lista.length - visiveis.length;
+      return `<div class="listaDisciplinasCompacta">${visiveis.join('<br>')}${restantes > 0 ? `<span class="maisDisciplinas">+ ${restantes} disciplina(s)</span>` : ''}</div>`;
+    }
+
     function render(dados) {
       dadosGerados = dados;
       const turma = dados.find(d => d.turma && d.turma !== 'Turma não identificada')?.turma || 'Turma não identificada';
@@ -850,8 +912,8 @@
             <td><strong>${d.totalNotasFaltandoT2}</strong></td>
             <td><span class="badge ${d.disciplinasSemNm3.length ? 'atencao' : 'ok'}">${d.nm3Lancadas}/${d.totalDisciplinas}</span></td>
             <td><span class="badge ${d.disciplinasSemMt.length ? 'atencao' : 'ok'}">${d.mtLancadas}/${d.totalDisciplinas}</span></td>
-            <td class="pendenciaCell">${d.disciplinasSemNm3.length ? d.disciplinasSemNm3.join('\n') : '<span class="badge ok">Sem pendência</span>'}</td>
-            <td class="pendenciaCell">${d.disciplinasSemMt.length ? d.disciplinasSemMt.join('\n') : '<span class="badge ok">Sem pendência</span>'}</td>
+            <td class="pendenciaCell">${resumoDisciplinas(d.disciplinasSemNm3)}</td>
+            <td class="pendenciaCell">${resumoDisciplinas(d.disciplinasSemMt)}</td>
           </tr>`).join('') +
           `</tbody></table>`;
       } else {
