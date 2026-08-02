@@ -591,7 +591,7 @@
         <section class="card alertaNm3 destaque" id="rankingTurma">
           <div class="sectionTag">RANKING DA TURMA</div>
           <h2>Ranking de desempenho e frequência</h2>
-          <p>Lista automática com os 03 maiores desempenhos, 03 maiores presenças, 03 menores desempenhos e 03 piores frequências. Alunos com todas as notas em branco e sem presença/falta registrada não são considerados.</p>
+          <p>Lista automática com os 05 maiores desempenhos, 05 maiores presenças, 05 menores desempenhos e 05 piores frequências. Não entram alunos com boletim zerado, somente a primeira nota cadastrada ou menos de 50% das disciplinas com média consolidada.</p>
           <div id="listaRanking" class="faltandoBox"></div>
         </section>
 
@@ -782,14 +782,31 @@
       return valor === null || Number.isNaN(valor) ? '-' : String(valor.toFixed(1)).replace('.', ',');
     }
 
+    function alunoAptoRanking(d) {
+      if (!d || d.alunoSemDadosRelatorio) return false;
+      if (d.mediaGeral === null || Number.isNaN(d.mediaGeral)) return false;
+
+      // Exclui boletins praticamente vazios: somente a primeira nota lançada,
+      // poucas médias consolidadas ou todos os resultados iguais a zero.
+      const totalDisciplinas = Number(d.totalDisciplinas) || 0;
+      const mediasConsolidadas = Number(d.notasValidas) || 0;
+      const minimoConsolidado = Math.max(2, Math.ceil(totalDisciplinas * 0.5));
+      const valoresConsolidados = (d.rows || [])
+        .map(r => r.mtf !== null ? r.mtf : r.mt)
+        .filter(v => v !== null && !Number.isNaN(v));
+      const possuiNotaPositiva = valoresConsolidados.some(v => Number(v) > 0);
+
+      return mediasConsolidadas >= minimoConsolidado && possuiNotaPositiva;
+    }
+
     function montarRankings(dados) {
-      const dadosConsiderados = dados.filter(d => !d.alunoSemDadosRelatorio);
-      const validos = dadosConsiderados.filter(d => d.mediaGeral !== null && !Number.isNaN(d.mediaGeral));
-      const porMaiorNota = [...validos].sort((a, b) => (b.mediaGeral - a.mediaGeral) || (a.totalFaltas - b.totalFaltas) || a.aluno.localeCompare(b.aluno)).slice(0, 3);
-      const porMenorNota = [...validos].sort((a, b) => (a.mediaGeral - b.mediaGeral) || (b.totalFaltas - a.totalFaltas) || a.aluno.localeCompare(b.aluno)).slice(0, 3);
-      const porMaiorPresenca = [...dadosConsiderados].sort((a, b) => (a.totalFaltas - b.totalFaltas) || ((b.mediaGeral ?? -1) - (a.mediaGeral ?? -1)) || a.aluno.localeCompare(b.aluno)).slice(0, 3);
-      const porPiorFrequencia = [...dadosConsiderados].sort((a, b) => (b.totalFaltas - a.totalFaltas) || ((a.mediaGeral ?? 99) - (b.mediaGeral ?? 99)) || a.aluno.localeCompare(b.aluno)).slice(0, 3);
-      return { porMaiorNota, porMaiorPresenca, porMenorNota, porPiorFrequencia };
+      const aptos = dados.filter(alunoAptoRanking);
+      const desconsiderados = dados.length - aptos.length;
+      const porMaiorNota = [...aptos].sort((a, b) => (b.mediaGeral - a.mediaGeral) || (a.totalFaltas - b.totalFaltas) || a.aluno.localeCompare(b.aluno)).slice(0, 5);
+      const porMenorNota = [...aptos].sort((a, b) => (a.mediaGeral - b.mediaGeral) || (b.totalFaltas - a.totalFaltas) || a.aluno.localeCompare(b.aluno)).slice(0, 5);
+      const porMaiorPresenca = [...aptos].sort((a, b) => (a.totalFaltas - b.totalFaltas) || (b.mediaGeral - a.mediaGeral) || a.aluno.localeCompare(b.aluno)).slice(0, 5);
+      const porPiorFrequencia = [...aptos].sort((a, b) => (b.totalFaltas - a.totalFaltas) || (a.mediaGeral - b.mediaGeral) || a.aluno.localeCompare(b.aluno)).slice(0, 5);
+      return { porMaiorNota, porMaiorPresenca, porMenorNota, porPiorFrequencia, totalAptos: aptos.length, desconsiderados, totalAlunos: dados.length };
     }
 
     function renderRankingHtml(dados) {
@@ -799,10 +816,12 @@
     <table><thead><tr><th>Posição</th><th>Aluno</th><th>Média geral</th><th>Total de faltas</th></tr></thead><tbody>
       ${lista.map((d, i) => `<tr><td><strong>${i + 1}º</strong></td><td><strong>${d.aluno}</strong></td><td>${mediaTexto(d.mediaGeral)}</td><td>${d.totalFaltas}</td></tr>`).join('') || '<tr><td colspan="4">Sem dados suficientes.</td></tr>'}
     </tbody></table>`;
-      return tabela('Top 03 maiores notas', r.porMaiorNota) +
-        tabela('Top 03 maiores presenças', r.porMaiorPresenca) +
-        tabela('Top 03 piores notas', r.porMenorNota) +
-        tabela('Top 03 piores frequências', r.porPiorFrequencia);
+      const resumo = `<div class="aviso" style="margin-bottom:12px"><strong>Ranking calculado com ${r.totalAptos} de ${r.totalAlunos} aluno(s).</strong> ${r.desconsiderados} aluno(s) foram desconsiderados por boletim insuficientemente preenchido, somente com a primeira nota lançada ou com resultados consolidados totalmente zerados.</div>`;
+      return resumo +
+        tabela('Top 05 maiores notas', r.porMaiorNota) +
+        tabela('Top 05 maiores presenças', r.porMaiorPresenca) +
+        tabela('Top 05 piores notas', r.porMenorNota) +
+        tabela('Top 05 piores frequências', r.porPiorFrequencia);
     }
 
 
@@ -849,8 +868,34 @@
         .sort((a, b) => b.mediaGeral - a.mediaGeral)
         .slice(0, 10);
 
-      const possivelEvasao = considerados.filter(d => (d.mediaGeral !== null && d.mediaGeral < 5) && d.totalFaltas >= 100 && d.emRisco.length >= 5)
-        .sort((a, b) => (b.totalFaltas - a.totalFaltas) || (b.emRisco.length - a.emRisco.length));
+      // Alunos que permanecem no boletim, mas não possuem nenhuma NM1 nem NM2
+      // cadastrada no 2º trimestre.
+      const semNotasSegundoTrimestre = considerados.filter(d =>
+        (d.nm3Lancadas || 0) === 0 && (d.mtLancadas || 0) === 0
+      );
+
+      // Critério individual de possível evasão: média geral do próprio aluno
+      // abaixo de 5,0 e mais de 200 faltas.
+      const riscoPorMediaEFaltas = considerados.filter(d =>
+        d.mediaGeral !== null && !Number.isNaN(d.mediaGeral) &&
+        d.mediaGeral < 5 && d.totalFaltas > 200
+      );
+
+      // Une os dois grupos sem duplicar alunos e registra o motivo da inclusão.
+      const mapaPossivelEvasao = new Map();
+      semNotasSegundoTrimestre.forEach(d => {
+        mapaPossivelEvasao.set(d.aluno, { ...d, motivoEvasao: 'Nenhuma NM1 ou NM2 cadastrada no 2º trimestre; aluno permanece no boletim.' });
+      });
+      riscoPorMediaEFaltas.forEach(d => {
+        const existente = mapaPossivelEvasao.get(d.aluno);
+        const motivo = 'Média geral individual abaixo de 5,0 e mais de 200 faltas.';
+        mapaPossivelEvasao.set(d.aluno, {
+          ...d,
+          motivoEvasao: existente ? `${existente.motivoEvasao} ${motivo}` : motivo
+        });
+      });
+      const possivelEvasao = [...mapaPossivelEvasao.values()]
+        .sort((a, b) => (b.totalFaltas - a.totalFaltas) || ((a.mediaGeral ?? 99) - (b.mediaGeral ?? 99)) || a.aluno.localeCompare(b.aluno));
 
       const faixasFaltas = [
         { faixa: '75 faltas ou mais', alunos: considerados.filter(d => d.totalFaltas >= 75).length },
@@ -878,11 +923,11 @@
   </div>`;
       html += `<div class="compactAlert" style="background:#fee2e2;border:1px solid #dc2626;border-radius:12px;color:#7f1d1d">
     <div class="compactAlertHeader">
-      <h3>🚨 Possível evasão</h3>
-      <p>Critério: média menor que 5,0, 100 faltas ou mais e 5 ou mais disciplinas abaixo da média.</p>
+      <h3>🚨 Acompanhamento prioritário</h3>
+      <p>Inclui alunos que permanecem no boletim sem nenhuma NM1/NM2 do 2º trimestre e alunos com média geral individual abaixo de 5,0 e mais de 200 faltas.</p>
     </div>
-    <table><thead><tr><th>Aluno</th><th>Média</th><th>Faltas</th><th>Disciplinas em risco</th><th>Notas faltando no 2º tri.</th></tr></thead><tbody>
-      ${a.possivelEvasao.length ? a.possivelEvasao.map(d => `<tr><td><strong>${d.aluno}</strong></td><td>${mediaTexto(d.mediaGeral)}</td><td>${d.totalFaltas}</td><td>${d.emRisco.length}</td><td>${d.totalNotasFaltandoT2 || 0}</td></tr>`).join('') : `<tr><td colspan="5"><strong>Nenhum aluno identificado com possível evasão pelos critérios definidos.</strong></td></tr>`}
+    <table><thead><tr><th>Aluno</th><th>Média geral do aluno</th><th>Faltas</th><th>NM1/NM2 preenchidas</th><th>Motivo da inclusão</th></tr></thead><tbody>
+      ${a.possivelEvasao.length ? a.possivelEvasao.map(d => `<tr><td><strong>${d.aluno}</strong></td><td>${mediaTexto(d.mediaGeral)}</td><td>${d.totalFaltas}</td><td>${d.nm3Lancadas || 0}/${d.totalDisciplinas} e ${d.mtLancadas || 0}/${d.totalDisciplinas}</td><td>${d.motivoEvasao || '-'}</td></tr>`).join('') : `<tr><td colspan="5"><strong>Nenhum aluno identificado pelos critérios definidos.</strong></td></tr>`}
     </tbody></table>
   </div>`;
       html += tabela('Disciplinas com maior dificuldade', ['Disciplina', 'Avaliados', 'Abaixo da média', '% abaixo', 'Média'],
@@ -1099,10 +1144,10 @@
         y = doc.lastAutoTable.finalY + 6;
       }
 
-      desenharSegmentoRanking('Top 03 maiores notas', rankings.porMaiorNota, [22, 101, 52]);
-      desenharSegmentoRanking('Top 03 maiores presenças', rankings.porMaiorPresenca, [15, 47, 102]);
-      desenharSegmentoRanking('Top 03 piores notas', rankings.porMenorNota, [146, 64, 14]);
-      desenharSegmentoRanking('Top 03 piores frequências', rankings.porPiorFrequencia, [185, 28, 28]);
+      desenharSegmentoRanking('Top 05 maiores notas', rankings.porMaiorNota, [22, 101, 52]);
+      desenharSegmentoRanking('Top 05 maiores presenças', rankings.porMaiorPresenca, [15, 47, 102]);
+      desenharSegmentoRanking('Top 05 piores notas', rankings.porMenorNota, [146, 64, 14]);
+      desenharSegmentoRanking('Top 05 piores frequências', rankings.porPiorFrequencia, [185, 28, 28]);
 
       const analises = montarAnalisesAvancadas(dadosGerados);
       if (y > pageH - 55) { doc.addPage(); cabecalho(); y = topoConteudo; }
@@ -1126,25 +1171,25 @@
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(10);
       doc.setTextColor(153, 27, 27);
-      doc.text('Alunos com possível evasão', margem, y);
+      doc.text('Alunos para acompanhamento prioritário', margem, y);
       doc.setTextColor(0, 0, 0);
       y += 4;
       doc.autoTable({
         startY: y,
         margin: { top: topoConteudo, left: margem, right: margem, bottom: margemRodape },
         theme: 'grid',
-        head: [['Aluno', 'Média geral', 'Total de faltas', 'Disciplinas em risco', 'Notas faltando 2º tri.']],
+        head: [['Aluno', 'Média geral do aluno', 'Faltas', 'NM1/NM2 preenchidas', 'Motivo']],
         body: analises.possivelEvasao.length ? analises.possivelEvasao.map(d => [
           textoSeguro(d.aluno),
           mediaTexto(d.mediaGeral),
           String(d.totalFaltas),
-          String(d.emRisco.length),
-          String(d.totalNotasFaltandoT2 || 0)
-        ]) : [['Nenhum aluno identificado com possível evasão pelos critérios definidos.', '-', '-', '-', '-']],
+          `${d.nm3Lancadas || 0}/${d.totalDisciplinas} e ${d.mtLancadas || 0}/${d.totalDisciplinas}`,
+          textoSeguro(d.motivoEvasao || '-')
+        ]) : [['Nenhum aluno identificado pelos critérios definidos.', '-', '-', '-', '-']],
         styles: { fontSize: 8, cellPadding: 2.2, overflow: 'linebreak', valign: 'top' },
         headStyles: { fillColor: [220, 38, 38], textColor: 255, fontStyle: 'bold' },
         alternateRowStyles: { fillColor: [254, 242, 242] },
-        columnStyles: { 0: { cellWidth: 'auto' }, 1: { cellWidth: 28, halign: 'center' }, 2: { cellWidth: 30, halign: 'center' }, 3: { cellWidth: 34, halign: 'center' } },
+        columnStyles: { 0: { cellWidth: 52 }, 1: { cellWidth: 28, halign: 'center' }, 2: { cellWidth: 24, halign: 'center' }, 3: { cellWidth: 42, halign: 'center' }, 4: { cellWidth: 'auto' } },
         didDrawPage: cabecalho
       });
       y = doc.lastAutoTable.finalY + 7;
