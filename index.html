@@ -381,6 +381,65 @@
 
     .semCadastroResumo { margin-top:8px; padding:7px 8px; border-radius:8px; background:#fee2e2; color:#991b1b; font-weight:bold; font-size:12px; }
 
+
+    .detalhamentoTable {
+      table-layout: fixed;
+    }
+
+    .detalhamentoTable th:nth-child(1) { width: 24%; }
+    .detalhamentoTable th:nth-child(2) { width: 10%; }
+    .detalhamentoTable th:nth-child(3) { width: 9%; }
+    .detalhamentoTable th:nth-child(4) { width: 9%; }
+    .detalhamentoTable th:nth-child(5) { width: 20%; }
+    .detalhamentoTable th:nth-child(6) { width: 28%; }
+
+    .alunoNome {
+      display: block;
+      line-height: 1.18;
+      overflow-wrap: anywhere;
+    }
+
+    .numeroDestaque {
+      font-size: 18px;
+      font-weight: 700;
+      color: #0f2f66;
+    }
+
+    .resumoAlunoBox {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 7px;
+    }
+
+    .miniBadge {
+      display: inline-block;
+      border-radius: 7px;
+      padding: 4px 7px;
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 1.15;
+    }
+
+    .miniBadge.vermelho { background: #fee2e2; color: #991b1b; }
+    .miniBadge.amarelo { background: #fef3c7; color: #92400e; }
+    .miniBadge.azul { background: #dbeafe; color: #1e40af; }
+    .miniBadge.verde { background: #dcfce7; color: #166534; }
+
+    .listaCompactaAluno {
+      margin: 5px 0 0 16px;
+      padding: 0;
+      line-height: 1.25;
+      font-size: 12px;
+    }
+
+    .listaCompactaAluno li { margin: 3px 0; }
+
+    .semRegistro {
+      color: #64748b;
+      font-size: 12px;
+    }
+
     @media print {
       body {
         background: #fff
@@ -604,17 +663,15 @@
 
         <section class="card">
           <h2>Detalhamento por aluno</h2>
-          <table>
+          <table class="detalhamentoTable">
             <thead>
               <tr>
                 <th>Aluno</th>
                 <th>Situação</th>
-                <th>NM1 2º tri.</th>
-                <th>NM2 2º tri.</th>
-                <th>Média geral</th>
+                <th>Média</th>
                 <th>Faltas</th>
-                <th>Disciplinas em risco</th>
-                <th>Observação</th>
+                <th>Desempenho</th>
+                <th>Pendências e frequência</th>
               </tr>
             </thead>
             <tbody id="tbody"></tbody>
@@ -1013,15 +1070,34 @@
       const tbody = $('tbody'); tbody.innerHTML = '';
       dados.forEach(d => {
         const tr = document.createElement('tr');
+        const disciplinasRiscoHtml = d.emRisco.length
+          ? `<ul class="listaCompactaAluno">${d.emRisco.map(r => `<li>${r.disciplina} (${String(r.media.toFixed(1)).replace('.', ',')})</li>`).join('')}</ul>`
+          : '<span class="semRegistro">Nenhuma disciplina abaixo da média.</span>';
+        const faltasAltasHtml = d.faltasAltas.length
+          ? `<ul class="listaCompactaAluno">${d.faltasAltas.map(f => `<li>${f.disciplina} (${f.faltas})</li>`).join('')}</ul>`
+          : '';
+        const classeNm1 = d.disciplinasSemNm3.length ? 'amarelo' : 'verde';
+        const classeNm2 = d.disciplinasSemMt.length ? 'amarelo' : 'verde';
         tr.innerHTML = `
-      <td><strong>${d.aluno}</strong><div class="small">${d.totalDisciplinas} disciplinas lidas</div></td>
+      <td><strong class="alunoNome">${d.aluno}</strong><div class="small">${d.totalDisciplinas} disciplinas lidas</div></td>
       <td><span class="badge ${d.situacao === 'RISCO' ? 'risco' : 'ok'}">${d.situacao}</span></td>
-      <td><span class="badge ok">${d.nm3Lancadas}/${d.totalDisciplinas}</span></td>
-      <td><span class="badge ${d.disciplinasSemMt.length ? 'atencao' : 'ok'}">${d.mtLancadas}/${d.totalDisciplinas}</span></td>
-      <td>${mediaTexto(d.mediaGeral)}</td>
-      <td>${d.totalFaltas}</td>
-      <td class="disciplinas">${d.emRisco.length ? d.emRisco.map(r => `${r.disciplina} (${String(r.media.toFixed(1)).replace('.', ',')})`).join('\n') : '-'}</td>
-      <td>${d.obs}</td>`;
+      <td><span class="numeroDestaque">${mediaTexto(d.mediaGeral)}</span></td>
+      <td><span class="numeroDestaque">${d.totalFaltas}</span></td>
+      <td>
+        <div class="resumoAlunoBox">
+          <span class="miniBadge ${d.emRisco.length ? 'vermelho' : 'verde'}">${d.emRisco.length} abaixo da média</span>
+        </div>
+        ${disciplinasRiscoHtml}
+      </td>
+      <td>
+        <div class="resumoAlunoBox">
+          ${d.muitasNotasFaltando ? `<span class="miniBadge vermelho">PRIORIDADE: ${d.totalNotasFaltandoT2} notas pendentes</span>` : `<span class="miniBadge azul">${d.totalNotasFaltandoT2} notas pendentes</span>`}
+          <span class="miniBadge ${classeNm1}">NM1: ${d.disciplinasSemNm3.length} pendente(s)</span>
+          <span class="miniBadge ${classeNm2}">NM2: ${d.disciplinasSemMt.length} pendente(s)</span>
+          <span class="miniBadge ${d.faltasAltas.length ? 'vermelho' : 'verde'}">${d.faltasAltas.length} comp. com faltas altas</span>
+        </div>
+        ${d.faltasAltas.length ? `<strong class="small" style="color:#991b1b">Componentes acima do limite:</strong>${faltasAltasHtml}` : '<span class="semRegistro">Sem componente acima do limite de faltas.</span>'}
+      </td>`;
         tbody.appendChild(tr);
       });
       $('results').classList.remove('hidden');
@@ -1274,29 +1350,27 @@
         startY: y,
         margin: { top: topoConteudo, left: margem, right: margem, bottom: margemRodape },
         theme: 'grid',
-        head: [['Aluno', 'Situação', 'NM1 2º tri.', 'NM2 2º tri.', 'Média', 'Faltas', 'Disciplinas em risco', 'Observação']],
+        head: [['Aluno', 'Situação', 'Média', 'Faltas', 'Desempenho', 'Pendências e frequência']],
         body: dadosGerados.map(d => [
           textoSeguro(d.aluno),
           d.situacao,
-          `${d.nm3Lancadas}/${d.totalDisciplinas}`,
-          `${d.mtLancadas}/${d.totalDisciplinas}`,
           mediaTexto(d.mediaGeral),
           String(d.totalFaltas),
-          d.emRisco.length ? d.emRisco.map(r => `${r.disciplina} (${String(r.media.toFixed(1)).replace('.', ',')})`).join('; ') : '-',
-          textoSeguro(d.obs)
+          d.emRisco.length
+            ? `${d.emRisco.length} abaixo da média: ${d.emRisco.map(r => `${r.disciplina} (${String(r.media.toFixed(1)).replace('.', ',')})`).join('; ')}`
+            : 'Nenhuma disciplina abaixo da média.',
+          `${d.muitasNotasFaltando ? 'PRIORIDADE. ' : ''}${d.totalNotasFaltandoT2} notas pendentes; NM1: ${d.disciplinasSemNm3.length}; NM2: ${d.disciplinasSemMt.length}; componentes com faltas altas: ${d.faltasAltas.length}${d.faltasAltas.length ? ' (' + d.faltasAltas.map(f => `${f.disciplina}: ${f.faltas}`).join('; ') + ')' : ''}.`
         ]),
         styles: { fontSize: 7.2, cellPadding: 1.8, overflow: 'linebreak', valign: 'top' },
         headStyles: { fillColor: [15, 47, 102], textColor: 255, fontStyle: 'bold' },
         alternateRowStyles: { fillColor: [248, 250, 252] },
         columnStyles: {
-          0: { cellWidth: 40 },
-          1: { cellWidth: 16, halign: 'center' },
-          2: { cellWidth: 14, halign: 'center' },
-          3: { cellWidth: 14, halign: 'center' },
-          4: { cellWidth: 14, halign: 'center' },
-          5: { cellWidth: 14, halign: 'center' },
-          6: { cellWidth: 66 },
-          7: { cellWidth: 'auto' }
+          0: { cellWidth: 48 },
+          1: { cellWidth: 18, halign: 'center' },
+          2: { cellWidth: 16, halign: 'center' },
+          3: { cellWidth: 16, halign: 'center' },
+          4: { cellWidth: 82 },
+          5: { cellWidth: 'auto' }
         },
         didParseCell: function (data) {
           if (data.section === 'body' && data.column.index === 1) {
