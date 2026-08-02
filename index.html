@@ -1351,17 +1351,38 @@
         margin: { top: topoConteudo, left: margem, right: margem, bottom: margemRodape },
         theme: 'grid',
         head: [['Aluno', 'Situação', 'Média', 'Faltas', 'Desempenho', 'Pendências e frequência']],
-        body: dadosGerados.map(d => [
-          textoSeguro(d.aluno),
-          d.situacao,
-          mediaTexto(d.mediaGeral),
-          String(d.totalFaltas),
-          d.emRisco.length
-            ? `${d.emRisco.length} abaixo da média: ${d.emRisco.map(r => `${r.disciplina} (${String(r.media.toFixed(1)).replace('.', ',')})`).join('; ')}`
-            : 'Nenhuma disciplina abaixo da média.',
-          `${d.muitasNotasFaltando ? 'PRIORIDADE. ' : ''}${d.totalNotasFaltandoT2} notas pendentes; NM1: ${d.disciplinasSemNm3.length}; NM2: ${d.disciplinasSemMt.length}; componentes com faltas altas: ${d.faltasAltas.length}${d.faltasAltas.length ? ' (' + d.faltasAltas.map(f => `${f.disciplina}: ${f.faltas}`).join('; ') + ')' : ''}.`
-        ]),
-        styles: { fontSize: 7.2, cellPadding: 1.8, overflow: 'linebreak', valign: 'top' },
+        body: dadosGerados.map(d => {
+          const desempenhoPdf = d.emRisco.length
+            ? `${d.emRisco.length} disciplina(s) abaixo da média
+
+${d.emRisco.map(r => `• ${r.disciplina} (${String(r.media.toFixed(1)).replace('.', ',')})`).join('\n')}`
+            : 'Nenhuma disciplina abaixo da média.';
+
+          const indicadoresPendencia = [
+            `${d.muitasNotasFaltando ? 'PRIORIDADE ALTA' : 'PENDÊNCIAS'}`,
+            `• ${d.totalNotasFaltandoT2} notas pendentes`,
+            `• NM1: ${d.disciplinasSemNm3.length} disciplina(s)`,
+            `• NM2: ${d.disciplinasSemMt.length} disciplina(s)`,
+            `• ${d.faltasAltas.length} componente(s) com faltas altas`
+          ];
+
+          if (d.faltasAltas.length) {
+            indicadoresPendencia.push('', 'Componentes acima do limite:');
+            d.faltasAltas.forEach(f => indicadoresPendencia.push(`• ${f.disciplina} (${f.faltas})`));
+          } else {
+            indicadoresPendencia.push('', 'Sem componente acima do limite de faltas.');
+          }
+
+          return [
+            textoSeguro(d.aluno),
+            d.situacao,
+            mediaTexto(d.mediaGeral),
+            String(d.totalFaltas),
+            desempenhoPdf,
+            indicadoresPendencia.join('\n')
+          ];
+        }),
+        styles: { fontSize: 7.2, cellPadding: 2.2, overflow: 'linebreak', valign: 'top', lineColor: [219, 227, 238] },
         headStyles: { fillColor: [15, 47, 102], textColor: 255, fontStyle: 'bold' },
         alternateRowStyles: { fillColor: [248, 250, 252] },
         columnStyles: {
@@ -1373,15 +1394,32 @@
           5: { cellWidth: 'auto' }
         },
         didParseCell: function (data) {
-          if (data.section === 'body' && data.column.index === 1) {
+          if (data.section !== 'body') return;
+
+          if (data.column.index === 1) {
             const valor = String(data.cell.raw || '');
-            if (valor === 'RISCO') {
-              data.cell.styles.textColor = [185, 28, 28];
-              data.cell.styles.fontStyle = 'bold';
-            } else {
-              data.cell.styles.textColor = [22, 101, 52];
-              data.cell.styles.fontStyle = 'bold';
-            }
+            data.cell.styles.fontStyle = 'bold';
+            data.cell.styles.fillColor = valor === 'RISCO' ? [254, 226, 226] : [220, 252, 231];
+            data.cell.styles.textColor = valor === 'RISCO' ? [185, 28, 28] : [22, 101, 52];
+          }
+
+          if (data.column.index === 2 || data.column.index === 3) {
+            data.cell.styles.fontStyle = 'bold';
+            data.cell.styles.fontSize = 9;
+            data.cell.styles.textColor = [15, 47, 102];
+          }
+
+          if (data.column.index === 4) {
+            const texto = String(data.cell.raw || '');
+            data.cell.styles.fillColor = texto.startsWith('Nenhuma') ? [240, 253, 244] : [254, 242, 242];
+            data.cell.styles.textColor = texto.startsWith('Nenhuma') ? [22, 101, 52] : [127, 29, 29];
+          }
+
+          if (data.column.index === 5) {
+            const texto = String(data.cell.raw || '');
+            const prioridade = texto.startsWith('PRIORIDADE ALTA');
+            data.cell.styles.fillColor = prioridade ? [254, 226, 226] : [239, 246, 255];
+            data.cell.styles.textColor = prioridade ? [153, 27, 27] : [15, 47, 102];
           }
         },
         didDrawPage: cabecalho
