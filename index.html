@@ -275,6 +275,48 @@
       min-width: 300px
     }
 
+
+    .prioridadeNotas {
+      background: #fee2e2 !important;
+      border-left: 5px solid #dc2626;
+    }
+
+    .compactAlert {
+      padding: 10px 12px !important;
+      margin: 10px 0 !important;
+    }
+
+    .compactAlertHeader {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 6px;
+    }
+
+    .compactAlertHeader h3 {
+      margin: 0;
+      font-size: 16px;
+      color: #991b1b;
+      white-space: nowrap;
+    }
+
+    .compactAlertHeader p {
+      margin: 0;
+      font-size: 12px;
+      color: #991b1b;
+      flex: 1;
+    }
+
+    .compactAlert table {
+      font-size: 12px;
+    }
+
+    .compactAlert th,
+    .compactAlert td {
+      padding: 6px 8px;
+    }
+
     @media print {
       body {
         background: #fff
@@ -410,7 +452,7 @@
   <header>
     <h1>Análise de Risco - Boletim Escolar</h1>
     <p><strong>Para analisar o boletim, gere o boletim completo da turma em:</strong> Lista de turma &gt; Detalhe da turma &gt; Boletim.</p>
-    <p>Identifica aluno, turma, NM3 lançada, disciplinas abaixo da média e risco por faltas.</p>
+    <p>Prioriza a conferência da ausência de NM1 e NM2 do 2º trimestre, além de notas faltantes, desempenho e frequência.</p>
   </header>
   <main>
     <section class="card" id="calendariosIniciais">
@@ -449,7 +491,7 @@
       </div>
       <button id="btnAnalisar">Analisar boletim</button>
       <div id="status" class="status"></div>
-      <p class="small">Critério: lista apenas disciplinas com 1ºMTF abaixo da média mínima. Quando 1ºMTF não existir, usa 1ºMT. Faltas em risco somente quando um componente curricular atingir ou ultrapassar o limite informado.</p>
+      <p class="small">Análise principal: ausência de NM1 e NM2 do 2º trimestre. Também identifica alunos com muitas notas pendentes, disciplinas abaixo da média e componentes com faltas acima do limite.</p>
     </section>
 
     <section id="results" class="hidden">
@@ -457,22 +499,15 @@
         <section class="card">
           <h1 style="margin-top:0">Análise de Risco - Boletim Escolar</h1>
           <p><strong>Para analisar o boletim gere o boletim completo da turma em:</strong> Lista de turma &gt; Detalhe da turma &gt; Boletim.</p>
-          <p>Identifica aluno, turma, NM3 lançada, disciplinas abaixo da média e risco por faltas.</p>
+          <p>Prioriza a conferência da ausência de NM1 e NM2 do 2º trimestre, além de notas faltantes, desempenho e frequência.</p>
           <div id="turmaTitulo" class="turmaTitulo">TURMA:</div>
         </section>
 
         <section class="card alertaNm3 destaque" id="relatorioNm3Faltando">
-          <div class="sectionTag">RELATÓRIO ACIMA</div>
-          <h2>Conferência geral de notas em branco</h2>
-          <p>Lista consolidada dos alunos que possuem uma ou mais disciplinas sem NM3 ou sem lançamento da média do 1º trimestre (1ºMT). Quando o aluno aparece em mais de uma situação, as pendências ficam na mesma linha.</p>
+          <div class="sectionTag">ANÁLISE PRINCIPAL</div>
+          <h2>Ausência de NM1 e NM2 do 2º trimestre</h2>
+          <p>Lista consolidada dos alunos com uma ou mais disciplinas sem NM1 ou NM2 no 2º trimestre. Os alunos com 5 ou mais notas pendentes recebem destaque de prioridade.</p>
           <div id="listaNm3Faltando" class="faltandoBox"></div>
-        </section>
-
-        <section class="card alertaNm3 destaque" id="relatorioMtFaltando">
-          <div class="sectionTag">CONFERÊNCIA DE NOTAS</div>
-          <h2>Alunos com 1ºMT em branco</h2>
-          <p>Lista dos alunos que possuem uma ou mais disciplinas sem lançamento da média do 1º trimestre (1ºMT).</p>
-          <div id="listaMtFaltando" class="faltandoBox"></div>
         </section>
 
         <section class="card">
@@ -480,9 +515,9 @@
           <div class="grid">
             <div class="metric"><span>Total de alunos</span><b id="totalAlunos">0</b></div>
             <div class="metric"><span>Alunos em risco</span><b id="totalRisco">0</b></div>
-            <div class="metric"><span>NM3 completa</span><b id="totalNm3">0</b></div>
-            <div class="metric"><span>NM3 faltando</span><b id="totalNm3Faltando">0</b></div>
-            <div class="metric"><span>1ºMT em branco</span><b id="totalMtFaltando">0</b></div>
+            <div class="metric"><span>NM1 do 2º tri. completa</span><b id="totalNm3">0</b></div>
+            <div class="metric"><span>NM1 do 2º tri. faltando</span><b id="totalNm3Faltando">0</b></div>
+            <div class="metric"><span>NM2 do 2º tri. faltando</span><b id="totalMtFaltando">0</b></div>
             <div class="metric"><span>Alunos com componente acima do limite</span><b id="totalFaltas">0</b></div>
           </div>
         </section>
@@ -508,8 +543,8 @@
               <tr>
                 <th>Aluno</th>
                 <th>Situação</th>
-                <th>NM3</th>
-                <th>1ºMT</th>
+                <th>NM1 2º tri.</th>
+                <th>NM2 2º tri.</th>
                 <th>Média geral</th>
                 <th>Faltas</th>
                 <th>Disciplinas em risco</th>
@@ -522,7 +557,7 @@
       </div>
       <section class="card exportBox">
         <h2>Baixar relatório final</h2>
-        <p>Use esta opção para baixar em PDF os dados gerados: relatório de NM3 faltando, resumo geral e detalhamento por aluno.</p>
+        <p>Use esta opção para baixar em PDF os dados gerados: relatório de ausência de NM1/NM2 do 2º trimestre, prioridades, resumo geral e detalhamento por aluno.</p>
         <div class="actions"><button id="btnPdf" class="btnPdf" type="button">Baixar dados gerados em PDF</button></div>
       </section>
     </section>
@@ -605,8 +640,11 @@
         const nm3 = valueIn(rowItems, 238, 264);
         const mt = valueIn(rowItems, 262, 286);
         const mtf = valueIn(rowItems, 306, 332);
+        // 2º trimestre: NM1 e NM2 ficam nas colunas iniciadas aproximadamente em x=334 e x=356.
+        const nm1T2 = valueIn(rowItems, 332, 351);
+        const nm2T2 = valueIn(rowItems, 352, 373);
         const faltas = valueIn(rowItems, 776, 797);
-        rows.push({ n: r.n, disciplina, nm3, mt, mtf, faltas: faltas ?? 0 });
+        rows.push({ n: r.n, disciplina, nm3, mt, mtf, nm1T2, nm2T2, faltas: faltas ?? 0 });
       }
       return rows;
     }
@@ -634,10 +672,12 @@
       const limiteFaltas = Number($('limiteFaltas').value || 10);
       return alunos.map(a => {
         const totalDisciplinas = a.rows.length;
-        const disciplinasSemNm3 = a.rows.filter(r => r.disciplina && r.nm3 === null).map(r => r.disciplina);
-        const disciplinasSemMt = a.rows.filter(r => r.disciplina && r.mt === null).map(r => r.disciplina);
-        const mtLancadas = a.rows.filter(r => r.disciplina && r.mt !== null).length;
-        const nm3Lancadas = a.rows.filter(r => r.disciplina && r.nm3 !== null).length;
+        const disciplinasSemNm3 = a.rows.filter(r => r.disciplina && r.nm1T2 === null).map(r => r.disciplina);
+        const disciplinasSemMt = a.rows.filter(r => r.disciplina && r.nm2T2 === null).map(r => r.disciplina);
+        const mtLancadas = a.rows.filter(r => r.disciplina && r.nm2T2 !== null).length;
+        const nm3Lancadas = a.rows.filter(r => r.disciplina && r.nm1T2 !== null).length;
+        const totalNotasFaltandoT2 = disciplinasSemNm3.length + disciplinasSemMt.length;
+        const muitasNotasFaltando = totalNotasFaltandoT2 >= 5;
         const notasValidas = a.rows
           .map(r => r.mtf !== null ? r.mtf : r.mt)
           .filter(v => v !== null && !Number.isNaN(v));
@@ -650,9 +690,9 @@
           return { disciplina: r.disciplina, media: notaBase };
         });
         const totalFaltas = a.rows.reduce((s, r) => s + (Number(r.faltas) || 0), 0);
-        // Regra: aluno com todas as notas em branco e sem nenhuma falta/presença registrada
-        // não entra no relatório nem nos rankings.
-        const alunoSemDadosRelatorio = notasValidas.length === 0 && totalFaltas === 0;
+        // Todos os alunos identificados no boletim permanecem no relatório,
+        // inclusive os que possuem muitas notas ainda não preenchidas.
+        const alunoSemDadosRelatorio = false;
         // Risco por faltas deve considerar apenas componente curricular acima do limite, não o TGF/total geral.
         const faltasAltas = a.rows
           .filter(r => (Number(r.faltas) || 0) >= limiteFaltas)
@@ -661,9 +701,11 @@
         let obs = [];
         if (emRisco.length) obs.push(`Possui ${emRisco.length} disciplina(s) abaixo de ${media.toFixed(1).replace('.', ',')}.`);
         if (faltasAltas.length) obs.push(`Componentes com faltas acima do limite: ${faltasAltas.map(f => `${f.disciplina} (${f.faltas})`).join('; ')}.`);
-        if (disciplinasSemMt.length) obs.push(`Possui ${disciplinasSemMt.length} disciplina(s) com 1ºMT em branco.`);
+        if (disciplinasSemNm3.length) obs.push(`Possui ${disciplinasSemNm3.length} disciplina(s) sem NM1 do 2º trimestre.`);
+        if (disciplinasSemMt.length) obs.push(`Possui ${disciplinasSemMt.length} disciplina(s) sem NM2 do 2º trimestre.`);
         if (!obs.length) obs.push('Sem risco pelos critérios informados.');
-        return { ...a, totalDisciplinas, nm3Lancadas, disciplinasSemNm3, mtLancadas, disciplinasSemMt, mediaGeral, notasValidas: notasValidas.length, alunoSemDadosRelatorio, emRisco, totalFaltas, faltasAltas, situacao, obs: obs.join(' ') };
+        if (muitasNotasFaltando) obs.unshift(`PRIORIDADE: ${totalNotasFaltandoT2} notas do 2º trimestre ainda não foram preenchidas.`);
+        return { ...a, totalDisciplinas, nm3Lancadas, disciplinasSemNm3, mtLancadas, disciplinasSemMt, totalNotasFaltandoT2, muitasNotasFaltando, mediaGeral, notasValidas: notasValidas.length, alunoSemDadosRelatorio, emRisco, totalFaltas, faltasAltas, situacao, obs: obs.join(' ') };
       });
     }
 
@@ -766,11 +808,13 @@
     <div class="metric"><span>Alunos abaixo da média</span><b>${a.abaixoMedia}</b><div class="small">${pct(a.abaixoMedia, a.totalComMedia)}</div></div>
     <div class="metric"><span>Possível evasão</span><b>${a.possivelEvasao.length}</b></div>
   </div>`;
-      html += `<div style="background:#fee2e2;border:2px solid #dc2626;border-radius:14px;padding:14px;margin:14px 0;color:#7f1d1d">
-    <h3 style="margin:0 0 8px;color:#991b1b">🚨 Alunos com possível evasão</h3>
-    <p style="margin:0 0 10px">Critério: média geral menor que 5,0, 100 faltas ou mais e 5 ou mais disciplinas abaixo da média.</p>
-    <table><thead><tr><th>Aluno</th><th>Média geral</th><th>Total de faltas</th><th>Disciplinas em risco</th></tr></thead><tbody>
-      ${a.possivelEvasao.length ? a.possivelEvasao.map(d => `<tr><td><strong>${d.aluno}</strong></td><td>${mediaTexto(d.mediaGeral)}</td><td>${d.totalFaltas}</td><td>${d.emRisco.length}</td></tr>`).join('') : `<tr><td colspan="4"><strong>Nenhum aluno identificado com possível evasão pelos critérios definidos.</strong></td></tr>`}
+      html += `<div class="compactAlert" style="background:#fee2e2;border:1px solid #dc2626;border-radius:12px;color:#7f1d1d">
+    <div class="compactAlertHeader">
+      <h3>🚨 Possível evasão</h3>
+      <p>Critério: média menor que 5,0, 100 faltas ou mais e 5 ou mais disciplinas abaixo da média.</p>
+    </div>
+    <table><thead><tr><th>Aluno</th><th>Média</th><th>Faltas</th><th>Disciplinas em risco</th><th>Notas faltando no 2º tri.</th></tr></thead><tbody>
+      ${a.possivelEvasao.length ? a.possivelEvasao.map(d => `<tr><td><strong>${d.aluno}</strong></td><td>${mediaTexto(d.mediaGeral)}</td><td>${d.totalFaltas}</td><td>${d.emRisco.length}</td><td>${d.totalNotasFaltandoT2 || 0}</td></tr>`).join('') : `<tr><td colspan="5"><strong>Nenhum aluno identificado com possível evasão pelos critérios definidos.</strong></td></tr>`}
     </tbody></table>
   </div>`;
       html += tabela('Disciplinas com maior dificuldade', ['Disciplina', 'Avaliados', 'Abaixo da média', '% abaixo', 'Média'],
@@ -797,10 +841,13 @@
         .sort((a, b) => a.aluno.localeCompare(b.aluno));
 
       if (pendenciasNotas.length) {
-        listaNm3.innerHTML = `<p><strong>${pendenciasNotas.length} aluno(s) com pendência de lançamento</strong></p>` +
-          `<table><thead><tr><th class="colAlunoPendencia">Aluno</th><th>NM3 lançada</th><th>1ºMT lançada</th><th>Disciplinas sem NM3</th><th>Disciplinas com 1ºMT em branco</th></tr></thead><tbody>` +
-          pendenciasNotas.map(d => `<tr>
-            <td><strong>${d.aluno}</strong></td>
+        pendenciasNotas.sort((a, b) => (b.totalNotasFaltandoT2 - a.totalNotasFaltandoT2) || a.aluno.localeCompare(b.aluno));
+        const prioritarios = pendenciasNotas.filter(d => d.muitasNotasFaltando).length;
+        listaNm3.innerHTML = `<p><strong>${pendenciasNotas.length} aluno(s) com pendência</strong> · <span class="badge risco">${prioritarios} com muitas notas faltando</span></p>` +
+          `<table><thead><tr><th class="colAlunoPendencia">Aluno</th><th>Total pendente</th><th>NM1 preenchida</th><th>NM2 preenchida</th><th>Disciplinas sem NM1</th><th>Disciplinas sem NM2</th></tr></thead><tbody>` +
+          pendenciasNotas.map(d => `<tr class="${d.muitasNotasFaltando ? 'prioridadeNotas' : ''}">
+            <td><strong>${d.aluno}</strong>${d.muitasNotasFaltando ? '<div><span class="badge risco">PRIORIDADE</span></div>' : ''}</td>
+            <td><strong>${d.totalNotasFaltandoT2}</strong></td>
             <td><span class="badge ${d.disciplinasSemNm3.length ? 'atencao' : 'ok'}">${d.nm3Lancadas}/${d.totalDisciplinas}</span></td>
             <td><span class="badge ${d.disciplinasSemMt.length ? 'atencao' : 'ok'}">${d.mtLancadas}/${d.totalDisciplinas}</span></td>
             <td class="pendenciaCell">${d.disciplinasSemNm3.length ? d.disciplinasSemNm3.join('\n') : '<span class="badge ok">Sem pendência</span>'}</td>
@@ -808,11 +855,8 @@
           </tr>`).join('') +
           `</tbody></table>`;
       } else {
-        listaNm3.innerHTML = '<p><span class="badge ok">Todos os alunos estão com NM3 e 1ºMT lançados.</span></p>';
+        listaNm3.innerHTML = '<p><span class="badge ok">Todos os alunos estão com NM1 e NM2 do 2º trimestre preenchidas.</span></p>';
       }
-
-      const relatorioMt = $('relatorioMtFaltando');
-      if (relatorioMt) relatorioMt.style.display = 'none';
       $('listaRanking').innerHTML = renderRankingHtml(dados);
       $('listaAnalisesAvancadas').innerHTML = renderAnalisesAvancadasHtml(dados);
       const tbody = $('tbody'); tbody.innerHTML = '';
@@ -908,7 +952,7 @@
         startY: y,
         margin: { top: topoConteudo, left: margem, right: margem, bottom: margemRodape },
         theme: 'grid',
-        head: [['Total de alunos', 'Alunos em risco', 'NM3 completa', 'NM3 faltando', '1ºMT em branco', 'Comp. acima limite faltas']],
+        head: [['Total de alunos', 'Alunos em risco', 'NM1 2º tri. completa', 'NM1 2º tri. faltando', 'NM2 2º tri. faltando', 'Comp. acima limite faltas']],
         body: [[totalAlunos, totalRisco, totalNm3Completa, totalNm3Faltando, totalMtFaltando, totalFaltas]],
         styles: { fontSize: 10, halign: 'center', cellPadding: 3 },
         headStyles: { fillColor: [15, 47, 102], textColor: 255, fontStyle: 'bold' },
@@ -983,13 +1027,14 @@
         startY: y,
         margin: { top: topoConteudo, left: margem, right: margem, bottom: margemRodape },
         theme: 'grid',
-        head: [['Aluno', 'Média geral', 'Total de faltas', 'Disciplinas em risco']],
+        head: [['Aluno', 'Média geral', 'Total de faltas', 'Disciplinas em risco', 'Notas faltando 2º tri.']],
         body: analises.possivelEvasao.length ? analises.possivelEvasao.map(d => [
           textoSeguro(d.aluno),
           mediaTexto(d.mediaGeral),
           String(d.totalFaltas),
-          String(d.emRisco.length)
-        ]) : [['Nenhum aluno identificado com possível evasão pelos critérios definidos.', '-', '-', '-']],
+          String(d.emRisco.length),
+          String(d.totalNotasFaltandoT2 || 0)
+        ]) : [['Nenhum aluno identificado com possível evasão pelos critérios definidos.', '-', '-', '-', '-']],
         styles: { fontSize: 8, cellPadding: 2.2, overflow: 'linebreak', valign: 'top' },
         headStyles: { fillColor: [220, 38, 38], textColor: 255, fontStyle: 'bold' },
         alternateRowStyles: { fillColor: [254, 242, 242] },
@@ -1027,7 +1072,7 @@
       if (y > pageH - 55) { doc.addPage(); cabecalho(); y = topoConteudo; }
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(11);
-      doc.text('Conferência geral de notas em branco', margem, y);
+      doc.text('Ausência de NM1 e NM2 do 2º trimestre', margem, y);
       y += 4;
 
       if (pendenciasNotasPdf.length) {
@@ -1035,25 +1080,28 @@
           startY: y,
           margin: { top: topoConteudo, left: margem, right: margem, bottom: margemRodape },
           theme: 'grid',
-          head: [['Aluno', 'NM3 lançada', '1ºMT lançada', 'Disciplinas sem NM3', 'Disciplinas com 1ºMT em branco']],
-          body: pendenciasNotasPdf.map(d => [
-            textoSeguro(d.aluno),
-            `${d.nm3Lancadas}/${d.totalDisciplinas}`,
-            `${d.mtLancadas}/${d.totalDisciplinas}`,
-            d.disciplinasSemNm3.length ? d.disciplinasSemNm3.join('; ') : 'Sem pendência',
-            d.disciplinasSemMt.length ? d.disciplinasSemMt.join('; ') : 'Sem pendência'
-          ]),
+          head: [['Aluno', 'Total pendente', 'NM1 preenchida', 'NM2 preenchida', 'Disciplinas sem NM1', 'Disciplinas sem NM2']],
+          body: pendenciasNotasPdf
+            .sort((a, b) => (b.totalNotasFaltandoT2 - a.totalNotasFaltandoT2) || a.aluno.localeCompare(b.aluno))
+            .map(d => [
+              textoSeguro(d.aluno) + (d.muitasNotasFaltando ? ' - PRIORIDADE' : ''),
+              String(d.totalNotasFaltandoT2),
+              `${d.nm3Lancadas}/${d.totalDisciplinas}`,
+              `${d.mtLancadas}/${d.totalDisciplinas}`,
+              d.disciplinasSemNm3.length ? d.disciplinasSemNm3.join('; ') : 'Sem pendência',
+              d.disciplinasSemMt.length ? d.disciplinasSemMt.join('; ') : 'Sem pendência'
+            ]),
           styles: { fontSize: 7.5, cellPadding: 2, overflow: 'linebreak', valign: 'top' },
           headStyles: { fillColor: [146, 64, 14], textColor: 255, fontStyle: 'bold' },
           alternateRowStyles: { fillColor: [248, 250, 252] },
-          columnStyles: { 0: { cellWidth: 48 }, 1: { cellWidth: 22, halign: 'center' }, 2: { cellWidth: 22, halign: 'center' }, 3: { cellWidth: 82 }, 4: { cellWidth: 'auto' } },
+          columnStyles: { 0: { cellWidth: 44 }, 1: { cellWidth: 18, halign: 'center' }, 2: { cellWidth: 22, halign: 'center' }, 3: { cellWidth: 22, halign: 'center' }, 4: { cellWidth: 72 }, 5: { cellWidth: 'auto' } },
           didDrawPage: cabecalho
         });
         y = doc.lastAutoTable.finalY + 8;
       } else {
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(9);
-        doc.text('Todos os alunos estão com NM3 e 1ºMT lançados.', margem, y);
+        doc.text('Todos os alunos estão com NM1 e NM2 do 2º trimestre preenchidas.', margem, y);
         y += 8;
       }
 
@@ -1067,7 +1115,7 @@
         startY: y,
         margin: { top: topoConteudo, left: margem, right: margem, bottom: margemRodape },
         theme: 'grid',
-        head: [['Aluno', 'Situação', 'NM3', '1ºMT', 'Média', 'Faltas', 'Disciplinas em risco', 'Observação']],
+        head: [['Aluno', 'Situação', 'NM1 2º tri.', 'NM2 2º tri.', 'Média', 'Faltas', 'Disciplinas em risco', 'Observação']],
         body: dadosGerados.map(d => [
           textoSeguro(d.aluno),
           d.situacao,
