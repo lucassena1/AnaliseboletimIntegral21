@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Análise de Risco - Boletim Escolar</title>
+  <title>Análise NM1/NM2 — Regra condicional v2</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -375,6 +375,10 @@
     .situacaoNota { line-height: 1.25; }
     .situacaoNota > strong { display:block; margin-bottom:6px; color:#991b1b; }
     .situacaoNota.cadastradasMenor > strong { color:#166534; }
+    .tituloSituacao { display:block; margin-bottom:6px; color:#0f2f66; }
+    .cadastradasMenor .tituloSituacao { color:#166534; }
+    .semCadastroResumo { margin-top:8px; padding:7px 9px; border-radius:8px; background:#fff1f2; color:#991b1b; line-height:1.25; }
+
     .semCadastroResumo { margin-top:8px; padding:7px 8px; border-radius:8px; background:#fee2e2; color:#991b1b; font-weight:bold; font-size:12px; }
 
     @media print {
@@ -897,23 +901,30 @@
       const ehNm1 = tipo === 'NM1';
       const cadastradas = ehNm1 ? (d.disciplinasComNm1T2 || []) : (d.disciplinasComNm2T2 || []);
       const naoCadastradas = ehNm1 ? (d.disciplinasSemNm3 || []) : (d.disciplinasSemMt || []);
+      const total = cadastradas.length + naoCadastradas.length;
 
+      // REGRA CONDICIONAL:
+      // Quando há menos disciplinas cadastradas do que não cadastradas,
+      // exibe SOMENTE as cadastradas e informa o total das demais sem cadastro.
       if (cadastradas.length < naoCadastradas.length) {
-        const lista = cadastradas.length
-          ? resumoDisciplinas(cadastradas)
-          : '<span class="badge risco">Nenhuma disciplina cadastrada</span>';
+        if (cadastradas.length === 0) {
+          return `<div class="situacaoNota nenhumaNota">
+            <strong class="tituloSituacao">Nenhuma nota cadastrada.</strong>
+          </div>`;
+        }
         return `<div class="situacaoNota cadastradasMenor">
-          <strong>${cadastradas.length} disciplina(s) com ${tipo} cadastrada</strong>
-          ${lista}
-          <div class="semCadastroResumo">As demais ${naoCadastradas.length} disciplina(s) não têm cadastro de ${tipo}.</div>
+          <strong class="tituloSituacao">${cadastradas.length} disciplina(s) com ${tipo} cadastrada</strong>
+          ${resumoDisciplinas(cadastradas, 12)}
+          <div class="semCadastroResumo"><b>Demais ${naoCadastradas.length} disciplina(s):</b> sem cadastro de ${tipo}.</div>
         </div>`;
       }
 
-      if (!naoCadastradas.length) return `<span class="badge ok">${tipo} completa</span>`;
+      // Quando as cadastradas são maioria (ou iguais), lista somente as que faltam.
+      if (!naoCadastradas.length) return `<span class="badge ok">${tipo} completa (${total}/${total})</span>`;
 
       return `<div class="situacaoNota">
-        <strong>${naoCadastradas.length} disciplina(s) sem cadastro de ${tipo}</strong>
-        ${resumoDisciplinas(naoCadastradas)}
+        <strong class="tituloSituacao">${naoCadastradas.length} disciplina(s) sem cadastro de ${tipo}</strong>
+        ${resumoDisciplinas(naoCadastradas, 12)}
       </div>`;
     }
 
@@ -939,7 +950,7 @@
         pendenciasNotas.sort((a, b) => (b.totalNotasFaltandoT2 - a.totalNotasFaltandoT2) || a.aluno.localeCompare(b.aluno));
         const prioritarios = pendenciasNotas.filter(d => d.muitasNotasFaltando).length;
         listaNm3.innerHTML = `<p><strong>${pendenciasNotas.length} aluno(s) com pendência</strong> · <span class="badge risco">${prioritarios} com muitas notas faltando</span></p>` +
-          `<table><thead><tr><th class="colAlunoPendencia">Aluno</th><th>Total pendente</th><th>NM1 preenchida</th><th>NM2 preenchida</th><th>Situação da NM1</th><th>Situação da NM2</th></tr></thead><tbody>` +
+          `<table><thead><tr><th class="colAlunoPendencia">Aluno</th><th>Total pendente</th><th>NM1 preenchida</th><th>NM2 preenchida</th><th>Cadastro da NM1 — regra condicional</th><th>Cadastro da NM2 — regra condicional</th></tr></thead><tbody>` +
           pendenciasNotas.map(d => `<tr class="${d.muitasNotasFaltando ? 'prioridadeNotas' : ''}">
             <td><strong>${d.aluno}</strong>${d.muitasNotasFaltando ? '<div><span class="badge risco">PRIORIDADE</span></div>' : ''}</td>
             <td><strong>${d.totalNotasFaltandoT2}</strong></td>
@@ -1183,12 +1194,16 @@
               String(d.totalNotasFaltandoT2),
               `${d.nm3Lancadas}/${d.totalDisciplinas}`,
               `${d.mtLancadas}/${d.totalDisciplinas}`,
-              (d.disciplinasComNm1T2 || []).length < d.disciplinasSemNm3.length
-                ? `${(d.disciplinasComNm1T2 || []).length} cadastrada(s): ${(d.disciplinasComNm1T2 || []).join('; ') || 'nenhuma'}. As demais ${d.disciplinasSemNm3.length} não têm cadastro de NM1.`
-                : (d.disciplinasSemNm3.length ? `${d.disciplinasSemNm3.length} sem cadastro: ${d.disciplinasSemNm3.join('; ')}` : 'NM1 completa'),
-              (d.disciplinasComNm2T2 || []).length < d.disciplinasSemMt.length
-                ? `${(d.disciplinasComNm2T2 || []).length} cadastrada(s): ${(d.disciplinasComNm2T2 || []).join('; ') || 'nenhuma'}. As demais ${d.disciplinasSemMt.length} não têm cadastro de NM2.`
-                : (d.disciplinasSemMt.length ? `${d.disciplinasSemMt.length} sem cadastro: ${d.disciplinasSemMt.join('; ')}` : 'NM2 completa')
+              (d.disciplinasComNm1T2 || []).length === 0
+                ? 'Nenhuma nota cadastrada.'
+                : ((d.disciplinasComNm1T2 || []).length < d.disciplinasSemNm3.length
+                  ? `${(d.disciplinasComNm1T2 || []).length} cadastrada(s): ${(d.disciplinasComNm1T2 || []).join('; ')}. Demais ${d.disciplinasSemNm3.length} sem cadastro.`
+                  : (d.disciplinasSemNm3.length ? `${d.disciplinasSemNm3.length} sem cadastro: ${d.disciplinasSemNm3.join('; ')}` : 'NM1 completa')),
+              (d.disciplinasComNm2T2 || []).length === 0
+                ? 'Nenhuma nota cadastrada.'
+                : ((d.disciplinasComNm2T2 || []).length < d.disciplinasSemMt.length
+                  ? `${(d.disciplinasComNm2T2 || []).length} cadastrada(s): ${(d.disciplinasComNm2T2 || []).join('; ')}. Demais ${d.disciplinasSemMt.length} sem cadastro.`
+                  : (d.disciplinasSemMt.length ? `${d.disciplinasSemMt.length} sem cadastro: ${d.disciplinasSemMt.join('; ')}` : 'NM2 completa'))
             ]),
           styles: { fontSize: 7.5, cellPadding: 2, overflow: 'linebreak', valign: 'top' },
           headStyles: { fillColor: [146, 64, 14], textColor: 255, fontStyle: 'bold' },
