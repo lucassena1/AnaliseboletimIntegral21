@@ -1062,12 +1062,13 @@
     function analisarMediaAnual(dados) {
       const porAluno = dados.map(aluno => {
         const componentes = aluno.rows
-          .filter(r => r.mtf !== null || r.mtfT2 !== null)
+          .filter(r => r.disciplina)
           .map(r => {
             const mediaParcial = r.mtf !== null && r.mtfT2 !== null
               ? Number(((r.mtf + r.mtfT2) / 2).toFixed(1))
               : null;
-            return { disciplina: r.disciplina, primeira: r.mtf, segunda: r.mtfT2, mediaParcial };
+            const aguardandoDuasMedias = r.mtf === null && r.mtfT2 === null;
+            return { disciplina: r.disciplina, primeira: r.mtf, segunda: r.mtfT2, mediaParcial, aguardandoDuasMedias };
           });
         const calculadas = componentes.filter(c => c.mediaParcial !== null);
         const abaixo = calculadas.filter(c => c.mediaParcial < 6);
@@ -1108,7 +1109,7 @@
                   ${componentes.map(c => {
                     const incompleta = c.mediaParcial === null;
                     const baixa = !incompleta && c.mediaParcial < 6;
-                    return `<tr class="${baixa ? 'mediaAbaixo' : (incompleta ? 'mediaIncompleta' : '')}"><td>${c.disciplina}</td><td>${mediaTexto(c.primeira)}</td><td>${mediaTexto(c.segunda)}</td><td>${incompleta ? 'Incompleta' : mediaTexto(c.mediaParcial)}</td><td>${baixa ? 'RECUPERAR NO 3º TRI.' : 'AGUARDANDO MÉDIA'}</td></tr>`;
+                    return `<tr class="${baixa ? 'mediaAbaixo' : (incompleta ? 'mediaIncompleta' : '')}"><td>${c.disciplina}</td><td>${mediaTexto(c.primeira)}</td><td>${mediaTexto(c.segunda)}</td><td>${incompleta ? 'Incompleta' : mediaTexto(c.mediaParcial)}</td><td>${baixa ? 'RECUPERAR NO 3º TRI.' : (c.aguardandoDuasMedias ? 'AGUARDANDO MÉDIA DOS DOIS TRIMESTRES' : 'AGUARDANDO MÉDIA')}</td></tr>`;
                   }).join('')}
                 </tbody></table>
               </details>`
@@ -1409,7 +1410,7 @@
           theme: 'grid',
           head: [['Estudante', 'Disciplina', '1ªMTF', '2ªMTF', 'Média parcial anual', 'Encaminhamento']],
           body: componentesPendentesAnual.map(c => [
-            textoSeguro(c.aluno), textoSeguro(c.disciplina), mediaTexto(c.primeira), mediaTexto(c.segunda), c.mediaParcial === null ? 'Incompleta' : mediaTexto(c.mediaParcial), c.mediaParcial === null ? 'Aguardar média' : 'Recuperar no 3º trimestre'
+            textoSeguro(c.aluno), textoSeguro(c.disciplina), mediaTexto(c.primeira), mediaTexto(c.segunda), c.mediaParcial === null ? 'Incompleta' : mediaTexto(c.mediaParcial), c.mediaParcial === null ? (c.aguardandoDuasMedias ? 'Aguardar médias dos dois trimestres' : 'Aguardar média') : 'Recuperar no 3º trimestre'
           ]),
           styles: { fontSize: 8, cellPadding: 2.2, overflow: 'linebreak', valign: 'top' },
           headStyles: { fillColor: [146, 64, 14], textColor: 255, fontStyle: 'bold' },
