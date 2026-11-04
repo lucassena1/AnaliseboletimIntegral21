@@ -640,10 +640,6 @@
     <section class="card upload">
       <h2>Anexar boletim em PDF</h2>
       <input id="pdfFile" type="file" accept="application/pdf">
-      <div class="controls">
-        <label>Média mínima: <input id="mediaMinima" type="number" min="0" max="10" step="0.1" value="6"></label>
-        <label>Faltas em atenção: <input id="limiteFaltas" type="number" min="0" step="1" value="10"></label>
-      </div>
       <button id="btnAnalisar">Analisar boletim</button>
       <div id="status" class="status"></div>
       <p class="small">Análise principal: ausência de NM1 do 3º trimestre em cada disciplina listada no boletim, inclusive quando a linha não tem outras notas preenchidas. Também identifica desempenho abaixo da média e componentes com faltas acima do limite.</p>
@@ -712,25 +708,14 @@
         </section>
 
         <section class="card">
-          <h2>Detalhamento por aluno</h2>
-          <table class="detalhamentoTable">
-            <thead>
-              <tr>
-                <th>Aluno</th>
-                <th>Situação</th>
-                <th>Média</th>
-                <th>Faltas</th>
-                <th>Desempenho</th>
-                <th>Pendências e frequência</th>
-              </tr>
-            </thead>
-            <tbody id="tbody"></tbody>
-          </table>
+          <h2>Ranking de faltas totais</h2>
+          <p>Estudantes ordenados do maior para o menor número de faltas registradas no boletim.</p>
+          <div id="listaRankingFaltas" class="faltandoBox"></div>
         </section>
       </div>
       <section class="card exportBox">
         <h2>Baixar relatório final</h2>
-        <p>Use esta opção para baixar em PDF a análise de ausência de NM1 do 3º trimestre, as médias parciais anuais abaixo de 6, as prioridades, o resumo geral e o detalhamento por aluno.</p>
+        <p>Use esta opção para baixar em PDF a análise de ausência de NM1 do 3º trimestre, as médias parciais anuais abaixo de 6, as prioridades, o resumo geral e o ranking de faltas totais.</p>
         <div class="actions"><button id="btnPdf" class="btnPdf" type="button">Baixar dados gerados em PDF</button></div>
       </section>
     </section>
@@ -860,8 +845,8 @@
     }
 
     function analisar(alunos) {
-      const media = Number($('mediaMinima').value || 6);
-      const limiteFaltas = Number($('limiteFaltas').value || 10);
+      const media = 6;
+      const limiteFaltas = 10;
       return alunos.map(a => {
         // Toda disciplina listada no boletim deve ser conferida, mesmo sem notas anteriores.
         const disciplinasAnalisaveis = a.rows.filter(r => r.disciplina);
@@ -953,7 +938,7 @@
 
 
     function montarAnalisesAvancadas(dados) {
-      const mediaMinima = Number($('mediaMinima').value || 6);
+      const mediaMinima = 6;
       const considerados = dados.filter(d => !d.alunoSemDadosRelatorio);
       const comMedia = considerados.filter(d => d.mediaGeral !== null && !Number.isNaN(d.mediaGeral));
       const mediaTurma = comMedia.length ? comMedia.reduce((s, d) => s + d.mediaGeral, 0) / comMedia.length : null;
@@ -1172,37 +1157,8 @@
       }
       $('listaRanking').innerHTML = renderRankingHtml(dados);
       $('listaAnalisesAvancadas').innerHTML = renderAnalisesAvancadasHtml(dados);
-      const tbody = $('tbody'); tbody.innerHTML = '';
-      dados.forEach(d => {
-        const tr = document.createElement('tr');
-        const disciplinasRiscoHtml = d.emRisco.length
-          ? `<ul class="listaCompactaAluno">${d.emRisco.map(r => `<li>${r.disciplina} (${String(r.media.toFixed(1)).replace('.', ',')})</li>`).join('')}</ul>`
-          : '<span class="semRegistro">Nenhuma disciplina abaixo da média.</span>';
-        const faltasAltasHtml = d.faltasAltas.length
-          ? `<ul class="listaCompactaAluno">${d.faltasAltas.map(f => `<li>${f.disciplina} (${f.faltas})</li>`).join('')}</ul>`
-          : '';
-        const classeNm1 = d.disciplinasSemNm1T3.length ? 'amarelo' : 'verde';
-        tr.innerHTML = `
-      <td><strong class="alunoNome">${d.aluno}</strong><div class="small">${d.totalDisciplinas} disciplinas lidas</div></td>
-      <td><span class="badge ${d.situacao === 'RISCO' ? 'risco' : (d.situacao === 'OK' ? 'ok' : 'atencao')}">${d.situacao}</span></td>
-      <td><span class="numeroDestaque">${mediaTexto(d.mediaGeral)}</span></td>
-      <td><span class="numeroDestaque">${d.totalFaltas}</span></td>
-      <td>
-        <div class="resumoAlunoBox">
-          <span class="miniBadge ${d.emRisco.length ? 'vermelho' : 'verde'}">${d.emRisco.length} abaixo da média</span>
-        </div>
-        ${disciplinasRiscoHtml}
-      </td>
-      <td>
-        <div class="resumoAlunoBox">
-          ${d.muitasNotasFaltando ? `<span class="miniBadge vermelho">PRIORIDADE: ${d.totalNm1T3Faltando} disciplinas sem NM1</span>` : `<span class="miniBadge azul">${d.totalNm1T3Faltando} disciplinas sem NM1</span>`}
-          <span class="miniBadge ${classeNm1}">NM1 do 3º tri.: ${d.nm1T3Lancadas}/${d.totalDisciplinas} preenchida</span>
-          <span class="miniBadge ${d.faltasAltas.length ? 'vermelho' : 'verde'}">${d.faltasAltas.length} comp. com faltas altas</span>
-        </div>
-        ${d.faltasAltas.length ? `<strong class="small" style="color:#991b1b">Componentes acima do limite:</strong>${faltasAltasHtml}` : '<span class="semRegistro">Sem componente acima do limite de faltas.</span>'}
-      </td>`;
-        tbody.appendChild(tr);
-      });
+      const rankingFaltas = [...dados].sort((a, b) => (b.totalFaltas - a.totalFaltas) || a.aluno.localeCompare(b.aluno));
+      $('listaRankingFaltas').innerHTML = `<table><thead><tr><th>Posição</th><th>Estudante</th><th>Total de faltas</th></tr></thead><tbody>${rankingFaltas.map((d, i) => `<tr><td><strong>${i + 1}º</strong></td><td>${d.aluno}</td><td><strong>${d.totalFaltas}</strong></td></tr>`).join('')}</tbody></table>`;
       $('results').classList.remove('hidden');
     }
 
@@ -1478,86 +1434,23 @@
       if (y > pageH - 45) { doc.addPage(); cabecalho(); y = topoConteudo; }
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(11);
-      doc.text('Detalhamento por aluno', margem, y);
+      doc.text('Ranking de faltas totais', margem, y);
       y += 4;
-
+      const rankingFaltasPdf = [...dadosGerados]
+        .sort((a, b) => (b.totalFaltas - a.totalFaltas) || a.aluno.localeCompare(b.aluno));
       doc.autoTable({
         startY: y,
         margin: { top: topoConteudo, left: margem, right: margem, bottom: margemRodape },
         theme: 'grid',
-        head: [['Aluno', 'Situação', 'Média', 'Faltas', 'Desempenho', 'Pendências e frequência']],
-        body: dadosGerados.map(d => {
-          const desempenhoPdf = d.emRisco.length
-            ? `${d.emRisco.length} disciplina(s) abaixo da média
-
-${d.emRisco.map(r => `• ${r.disciplina} (${String(r.media.toFixed(1)).replace('.', ',')})`).join('\n')}`
-            : 'Nenhuma disciplina abaixo da média.';
-
-          const indicadoresPendencia = [
-            `${d.muitasNotasFaltando ? 'PRIORIDADE ALTA' : 'NM1 DO 3º TRIMESTRE'}`,
-            `• ${d.totalNm1T3Faltando} disciplina(s) sem NM1`,
-            `• NM1 lançada em ${d.nm1T3Lancadas} de ${d.totalDisciplinas} disciplina(s) analisáveis`,
-            `• ${d.faltasAltas.length} componente(s) com faltas altas`
-          ];
-
-          if (d.faltasAltas.length) {
-            indicadoresPendencia.push('', 'Componentes acima do limite:');
-            d.faltasAltas.forEach(f => indicadoresPendencia.push(`• ${f.disciplina} (${f.faltas})`));
-          } else {
-            indicadoresPendencia.push('', 'Sem componente acima do limite de faltas.');
-          }
-
-          return [
-            textoSeguro(d.aluno),
-            d.situacao,
-            mediaTexto(d.mediaGeral),
-            String(d.totalFaltas),
-            desempenhoPdf,
-            indicadoresPendencia.join('\n')
-          ];
-        }),
-        styles: { fontSize: 7.2, cellPadding: 2.2, overflow: 'linebreak', valign: 'top', lineColor: [219, 227, 238] },
+        head: [['Posição', 'Estudante', 'Total de faltas']],
+        body: rankingFaltasPdf.map((d, i) => [`${i + 1}º`, textoSeguro(d.aluno), String(d.totalFaltas)]),
+        styles: { fontSize: 9, cellPadding: 2.5, overflow: 'linebreak', valign: 'middle' },
         headStyles: { fillColor: [15, 47, 102], textColor: 255, fontStyle: 'bold' },
         alternateRowStyles: { fillColor: [248, 250, 252] },
-        columnStyles: {
-          0: { cellWidth: 48 },
-          1: { cellWidth: 18, halign: 'center' },
-          2: { cellWidth: 16, halign: 'center' },
-          3: { cellWidth: 16, halign: 'center' },
-          4: { cellWidth: 82 },
-          5: { cellWidth: 'auto' }
-        },
-        didParseCell: function (data) {
-          if (data.section !== 'body') return;
-
-          if (data.column.index === 1) {
-            const valor = String(data.cell.raw || '');
-            data.cell.styles.fontStyle = 'bold';
-            data.cell.styles.fillColor = valor === 'RISCO' ? [254, 226, 226] : [220, 252, 231];
-            data.cell.styles.textColor = valor === 'RISCO' ? [185, 28, 28] : [22, 101, 52];
-          }
-
-          if (data.column.index === 2 || data.column.index === 3) {
-            data.cell.styles.fontStyle = 'bold';
-            data.cell.styles.fontSize = 9;
-            data.cell.styles.textColor = [15, 47, 102];
-          }
-
-          if (data.column.index === 4) {
-            const texto = String(data.cell.raw || '');
-            data.cell.styles.fillColor = texto.startsWith('Nenhuma') ? [240, 253, 244] : [254, 242, 242];
-            data.cell.styles.textColor = texto.startsWith('Nenhuma') ? [22, 101, 52] : [127, 29, 29];
-          }
-
-          if (data.column.index === 5) {
-            const texto = String(data.cell.raw || '');
-            const prioridade = texto.startsWith('PRIORIDADE ALTA');
-            data.cell.styles.fillColor = prioridade ? [254, 226, 226] : [239, 246, 255];
-            data.cell.styles.textColor = prioridade ? [153, 27, 27] : [15, 47, 102];
-          }
-        },
+        columnStyles: { 0: { cellWidth: 25, halign: 'center' }, 1: { cellWidth: 'auto' }, 2: { cellWidth: 40, halign: 'center', fontStyle: 'bold' } },
         didDrawPage: cabecalho
       });
+      y = doc.lastAutoTable.finalY + 8;
 
       rodape();
       const nomeTurma = turma.replace(/[\\/:*?"<>|]/g, '').replace(/\s+/g, '_');
