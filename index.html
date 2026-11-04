@@ -340,6 +340,12 @@
       font-weight: bold
     }
 
+    .mediaIncompleta {
+      color: #a16207;
+      background: #fef3c7;
+      font-weight: bold
+    }
+
     .mediaAnualLista {
       width: 100%;
       min-width: 760px;
@@ -674,12 +680,20 @@
         <section class="card" id="analiseMediaAnual">
           <div class="sectionTag" style="background:#b91c1c">RECUPERAÇÃO NO 3º TRIMESTRE</div>
           <h2>Média parcial anual — 1º e 2º trimestres</h2>
-          <p>Média calculada por disciplina: (1ªMTF + 2ªMTF) ÷ 2. Resultados abaixo de 6,0 aparecem em vermelho e precisam de recuperação no 3º trimestre. Quando faltar uma das médias trimestrais, o cálculo fica indicado como incompleto.</p>
+          <p>Média calculada por disciplina: (1ªMTF + 2ªMTF) ÷ 2. Resultados abaixo de 6,0 aparecem em vermelho; médias incompletas ficam em amarelo. O filtro mostra apenas essas pendências e oculta disciplinas com média igual ou acima de 6,0.</p>
           <div class="grid resumoGrid" style="margin-bottom:12px">
             <div class="metric"><span>Estudantes com média abaixo de 6</span><b id="mediaAnualAlunosAbaixo">0</b></div>
             <div class="metric"><span>Disciplinas abaixo de 6</span><b id="mediaAnualDisciplinasAbaixo">0</b></div>
             <div class="metric"><span>Médias calculadas com os dois trimestres</span><b id="mediaAnualCalculadas">0</b></div>
+            <div class="metric"><span>Médias incompletas</span><b id="mediaAnualIncompletas">0</b></div>
           </div>
+          <label for="mediaAnualFiltro"><strong>Exibir no filtro:</strong>
+            <select id="mediaAnualFiltro">
+              <option value="pendencias">Somente médias abaixo de 6 e incompletas</option>
+              <option value="abaixo6">Somente médias abaixo de 6</option>
+              <option value="incompleta">Somente médias incompletas</option>
+            </select>
+          </label>
           <div id="listaMediaAnual" class="faltandoBox"></div>
         </section>
 
@@ -1072,13 +1086,15 @@
           });
         const calculadas = componentes.filter(c => c.mediaParcial !== null);
         const abaixo = calculadas.filter(c => c.mediaParcial < 6);
-        return { ...aluno, componentesMediaAnual: componentes, mediasCalculadas: calculadas.length, disciplinasAbaixo6: abaixo };
+        const incompletas = componentes.filter(c => c.mediaParcial === null);
+        return { ...aluno, componentesMediaAnual: componentes, mediasCalculadas: calculadas.length, disciplinasAbaixo6: abaixo, mediasIncompletas: incompletas };
       });
       return {
         porAluno,
         alunosAbaixo6: porAluno.filter(a => a.disciplinasAbaixo6.length > 0).length,
         disciplinasAbaixo6: porAluno.reduce((s, a) => s + a.disciplinasAbaixo6.length, 0),
-        totalCalculadas: porAluno.reduce((s, a) => s + a.mediasCalculadas, 0)
+        totalCalculadas: porAluno.reduce((s, a) => s + a.mediasCalculadas, 0),
+        totalIncompletas: porAluno.reduce((s, a) => s + a.mediasIncompletas.length, 0)
       };
     }
 
@@ -1087,25 +1103,38 @@
       $('mediaAnualAlunosAbaixo').textContent = analise.alunosAbaixo6;
       $('mediaAnualDisciplinasAbaixo').textContent = analise.disciplinasAbaixo6;
       $('mediaAnualCalculadas').textContent = analise.totalCalculadas;
-      const linhas = [...analise.porAluno]
+      $('mediaAnualIncompletas').textContent = analise.totalIncompletas;
+      const filtro = $('mediaAnualFiltro').value || 'pendencias';
+      const alunosFiltrados = analise.porAluno.map(aluno => {
+        const pendencias = aluno.componentesMediaAnual.filter(c => {
+          if (filtro === 'abaixo6') return c.mediaParcial !== null && c.mediaParcial < 6;
+          if (filtro === 'incompleta') return c.mediaParcial === null;
+          return c.mediaParcial === null || c.mediaParcial < 6;
+        });
+        return { ...aluno, componentesFiltrados: pendencias };
+      }).filter(aluno => aluno.componentesFiltrados.length > 0);
+      const linhas = [...alunosFiltrados]
         .sort((a, b) => (b.disciplinasAbaixo6.length - a.disciplinasAbaixo6.length) || a.aluno.localeCompare(b.aluno))
         .map(aluno => {
-          const componentes = aluno.componentesMediaAnual;
+          const componentes = aluno.componentesFiltrados;
           const detalhe = componentes.length
-            ? `<details class="mediaAlunoDetails"><summary>Ver ${componentes.length} disciplina(s) com alguma média</summary>
+            ? `<details class="mediaAlunoDetails"><summary>Ver ${componentes.length} pendência(s): ${aluno.disciplinasAbaixo6.length} abaixo de 6 e ${aluno.mediasIncompletas.length} incompleta(s)</summary>
                 <table class="mediaAnualLista"><thead><tr><th>Disciplina</th><th>1ªMTF</th><th>2ªMTF</th><th>Média parcial anual</th><th>Acompanhamento</th></tr></thead><tbody>
                   ${componentes.map(c => {
                     const incompleta = c.mediaParcial === null;
                     const baixa = !incompleta && c.mediaParcial < 6;
-                    return `<tr class="${baixa ? 'mediaAbaixo' : ''}"><td>${c.disciplina}</td><td>${mediaTexto(c.primeira)}</td><td>${mediaTexto(c.segunda)}</td><td>${incompleta ? 'Incompleta' : mediaTexto(c.mediaParcial)}</td><td>${baixa ? 'RECUPERAR NO 3º TRI.' : (incompleta ? 'Aguardar média dos dois trimestres' : 'Sem alerta por este critério')}</td></tr>`;
+                    return `<tr class="${baixa ? 'mediaAbaixo' : (incompleta ? 'mediaIncompleta' : '')}"><td>${c.disciplina}</td><td>${mediaTexto(c.primeira)}</td><td>${mediaTexto(c.segunda)}</td><td>${incompleta ? 'Incompleta' : mediaTexto(c.mediaParcial)}</td><td>${baixa ? 'RECUPERAR NO 3º TRI.' : 'AGUARDANDO MÉDIA'}</td></tr>`;
                   }).join('')}
                 </tbody></table>
               </details>`
             : '<span class="small">Sem 1ªMTF ou 2ªMTF lançada.</span>';
           const abaixo = aluno.disciplinasAbaixo6.length;
-          return `<tr><td><strong>${aluno.aluno}</strong></td><td><span class="badge ${abaixo ? 'risco' : 'ok'}">${abaixo} abaixo de 6</span></td><td>${aluno.mediasCalculadas}</td><td>${detalhe}</td></tr>`;
+          const incompletas = aluno.mediasIncompletas.length;
+          return `<tr><td><strong>${aluno.aluno}</strong></td><td><span class="badge ${abaixo ? 'risco' : 'ok'}">${abaixo} abaixo de 6</span></td><td><span class="badge ${incompletas ? 'atencao' : 'ok'}">${incompletas} incompleta(s)</span></td><td>${detalhe}</td></tr>`;
         }).join('');
-      $('listaMediaAnual').innerHTML = `<table><thead><tr><th>Estudante</th><th>Disciplinas abaixo de 6</th><th>Médias calculadas</th><th>Detalhamento das médias por disciplina</th></tr></thead><tbody>${linhas}</tbody></table>`;
+      $('listaMediaAnual').innerHTML = linhas
+        ? `<table><thead><tr><th>Estudante</th><th>Disciplinas abaixo de 6</th><th>Médias incompletas</th><th>Componentes que precisam de atenção</th></tr></thead><tbody>${linhas}</tbody></table>`
+        : '<p><span class="badge ok">Nenhum componente corresponde a este filtro.</span></p>';
       return analise;
     }
 
@@ -1405,29 +1434,36 @@
       }
 
       const mediaAnualPdf = analisarMediaAnual(dadosGerados);
-      const componentesParaRecuperacao = mediaAnualPdf.porAluno.flatMap(aluno =>
-        aluno.disciplinasAbaixo6.map(c => ({ aluno: aluno.aluno, ...c }))
+      const componentesPendentesAnual = mediaAnualPdf.porAluno.flatMap(aluno =>
+        aluno.componentesMediaAnual
+          .filter(c => c.mediaParcial === null || c.mediaParcial < 6)
+          .map(c => ({ aluno: aluno.aluno, ...c }))
       );
       if (y > pageH - 55) { doc.addPage(); cabecalho(); y = topoConteudo; }
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(11);
-      doc.setTextColor(185, 28, 28);
-      doc.text('Média parcial anual abaixo de 6,0 — recuperar no 3º trimestre', margem, y);
+      doc.setTextColor(146, 64, 14);
+      doc.text('Pendências da média parcial anual — abaixo de 6 ou incompleta', margem, y);
       doc.setTextColor(0, 0, 0);
       y += 4;
-      if (componentesParaRecuperacao.length) {
+      if (componentesPendentesAnual.length) {
         doc.autoTable({
           startY: y,
           margin: { top: topoConteudo, left: margem, right: margem, bottom: margemRodape },
           theme: 'grid',
           head: [['Estudante', 'Disciplina', '1ªMTF', '2ªMTF', 'Média parcial anual', 'Encaminhamento']],
-          body: componentesParaRecuperacao.map(c => [
-            textoSeguro(c.aluno), textoSeguro(c.disciplina), mediaTexto(c.primeira), mediaTexto(c.segunda), mediaTexto(c.mediaParcial), 'Recuperar no 3º trimestre'
+          body: componentesPendentesAnual.map(c => [
+            textoSeguro(c.aluno), textoSeguro(c.disciplina), mediaTexto(c.primeira), mediaTexto(c.segunda), c.mediaParcial === null ? 'Incompleta' : mediaTexto(c.mediaParcial), c.mediaParcial === null ? 'Aguardar média' : 'Recuperar no 3º trimestre'
           ]),
           styles: { fontSize: 8, cellPadding: 2.2, overflow: 'linebreak', valign: 'top' },
-          headStyles: { fillColor: [185, 28, 28], textColor: 255, fontStyle: 'bold' },
-          bodyStyles: { fillColor: [254, 226, 226], textColor: [153, 27, 27] },
-          alternateRowStyles: { fillColor: [254, 242, 242] },
+          headStyles: { fillColor: [146, 64, 14], textColor: 255, fontStyle: 'bold' },
+          didParseCell: function (data) {
+            if (data.section !== 'body') return;
+            const componente = componentesPendentesAnual[data.row.index];
+            if (!componente) return;
+            data.cell.styles.fillColor = componente.mediaParcial === null ? [254, 243, 199] : [254, 226, 226];
+            data.cell.styles.textColor = componente.mediaParcial === null ? [161, 98, 7] : [153, 27, 27];
+          },
           columnStyles: { 0: { cellWidth: 48 }, 1: { cellWidth: 67 }, 2: { cellWidth: 20, halign: 'center' }, 3: { cellWidth: 20, halign: 'center' }, 4: { cellWidth: 27, halign: 'center' }, 5: { cellWidth: 'auto' } },
           didDrawPage: cabecalho
         });
@@ -1435,7 +1471,7 @@
       } else {
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(9);
-        doc.text('Nenhuma média parcial anual abaixo de 6,0 foi identificada com 1ªMTF e 2ªMTF preenchidas.', margem, y);
+        doc.text('Nenhuma média abaixo de 6,0 ou incompleta foi identificada.', margem, y);
         y += 8;
       }
 
@@ -1532,6 +1568,10 @@ ${d.emRisco.map(r => `• ${r.disciplina} (${String(r.media.toFixed(1)).replace(
       if (ev.target && ev.target.id === 'btnPdf') {
         gerarPdfOrganizado();
       }
+    });
+
+    $('mediaAnualFiltro').addEventListener('change', () => {
+      if (dadosGerados.length) renderMediaAnual(dadosGerados);
     });
 
     $('btnAnalisar').addEventListener('click', async () => {
